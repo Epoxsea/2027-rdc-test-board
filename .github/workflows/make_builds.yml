@@ -1,0 +1,90 @@
+name: Build STM32 Firmware
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/quangngonz/stm32-build:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build firmware
+        run: make
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stm32-firmware
+          path: |
+            build/*.elf
+            build/*.bin
+            build/*.hex
+
+  release:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: stm32-firmware
+          path: firmware
+
+      - name: Prepare release metadata
+        id: meta
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:6}"
+          BRANCH="${GITHUB_REF_NAME}"
+          BRANCH_SAFE="${BRANCH//\//-}"
+          SUBJECT=$(git log -1 --pretty=%s)
+
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "tag=firmware-${BRANCH_SAFE}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "title=(${SHORT_SHA}) ${SUBJECT}" >> "$GITHUB_OUTPUT"
+          {
+            echo 'body<<RELEASE_BODY'
+            git log -1 --pretty=%B
+            echo
+            echo "---"
+            echo "Branch: ${BRANCH}"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "RELEASE_BODY"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Remove prior release (workflow re-run)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          gh release delete "$TAG" --yes 2>/dev/null || true
+          git push origin ":refs/tags/${TAG}" 2>/dev/null || true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.title }}
+          body: ${{ steps.meta.outputs.body }}
+          files: |
+            firmware/*.elf
+            firmware/*.bin
+            firmware/*.hex
+          make_latest: true
+          fail_on_unmatched_files: true
