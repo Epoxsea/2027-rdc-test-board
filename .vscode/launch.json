@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Cortex Debug",
+      // "preLaunchTask": "Clean and Build",
+      "cwd": "${workspaceFolder}",
+      "executable": "build/test_rdc_board.elf",
+      "request": "launch",
+      "type": "cortex-debug",
+      "runToEntryPoint": "main",
+      "liveWatch": {
+        "enabled": true,
+        "samplesPerSecond": 4
+      },
+      "servertype": "stlink"
+    }
+  ]
+}

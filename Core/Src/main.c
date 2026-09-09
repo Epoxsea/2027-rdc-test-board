@@ -97,7 +97,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    static const uint16_t led_pins[] = {GPIO_PIN_1, GPIO_PIN_5, GPIO_PIN_6, GPIO_PIN_7};
+    static const uint16_t led_pins[] = {GPIO_PIN_4, GPIO_PIN_5, GPIO_PIN_6, GPIO_PIN_7};
 
     for (uint8_t i = 0; i < 4U; i++)
     {
